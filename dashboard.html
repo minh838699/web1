@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Assistant Dashboard</title>
+    <style>
+        :root {
+            --primary-color: #03a9f4;
+            --secondary-color: #ff9800;
+            --dark-color: #242424;
+            --light-color: #f8f8f8;
+            --success-color: #4caf50;
+            --warning-color: #ff5722;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .dashboard {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            color: var(--dark-color);
+            font-size: 18px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .sensor-data {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 20px 0;
+        }
+
+        .sensor-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 10px 0;
+        }
+
+        .sensor-label {
+            color: #777;
+            font-size: 14px;
+        }
+
+        .light-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .light-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .light-name {
+            font-weight: 500;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--success-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .brightness-control {
+            margin-top: 15px;
+        }
+
+        .brightness-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+            padding: 10px 20px;
+            background-color: var(--light-color);
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+        }
+
+        .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .connected {
+            background-color: var(--success-color);
+        }
+
+        .disconnected {
+            background-color: var(--warning-color);
+        }
+
+        .error-message {
+            color: var(--warning-color);
+            background-color: rgba(255, 87, 34, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<!-- Phần giao diện và script JavaScript giữ nguyên như trong file gốc -->
+<!-- Chỉ thay dòng hassToken như sau: -->
+   <header>
+        <h1>Home Assistant Dashboard</h1>
+    </header>
+
+    <div class="container">
+        <div class="dashboard">
+            <!-- Yeelight Control Card -->
+            <div class="card">
+                <h2>Điều Khiển Đèn</h2>
+                <div class="light-controls">
+                    <div class="light-item">
+                        <span class="light-name">Đèn Phòng Khách</span>
+                        <label class="switch">
+                            <input type="checkbox" id="livingRoomLight">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="brightness-control">
+                        <p>Độ sáng: <span id="brightnessValue">70</span>%</p>
+                        <input type="range" min="1" max="100" value="70" class="brightness-slider" id="livingRoomBrightness">
+                    </div>
+
+                    <div class="light-item">
+                        <span class="light-name">Đèn Phòng Ngủ</span>
+                        <label class="switch">
+                            <input type="checkbox" id="bedroomLight">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="brightness-control">
+                        <p>Độ sáng: <span id="bedroomBrightnessValue">50</span>%</p>
+                        <input type="range" min="1" max="100" value="50" class="brightness-slider" id="bedroomBrightness">
+                    </div>
+                </div>
+                <div class="error-message" id="lightErrorMsg"></div>
+            </div>
+
+            <!-- Temperature Card -->
+            <div class="card">
+                <h2>Nhiệt Độ</h2>
+                <div class="sensor-data">
+                    <div class="sensor-value" id="temperatureValue">--°C</div>
+                    <div class="sensor-label">Cập nhật lần cuối: <span id="tempLastUpdate">--:--:--</span></div>
+                </div>
+            </div>
+
+            <!-- Humidity Card -->
+            <div class="card">
+                <h2>Độ Ẩm</h2>
+                <div class="sensor-data">
+                    <div class="sensor-value" id="humidityValue">--%</div>
+                    <div class="sensor-label">Cập nhật lần cuối: <span id="humidityLastUpdate">--:--:--</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="indicator disconnected" id="connectionStatus"></div>
+                <span id="connectionText">Đang kết nối với Home Assistant...</span>
+            </div>
+            <div>
+                <span id="lastUpdated">Chưa có dữ liệu</span>
+            </div>
+        </div>
+        <div class="error-message" id="connectionErrorMsg"></div>
+    </div>
+<script>
+    const CONFIG = {
+        hassUrl: "https://ebqvnmfukgx05lv0x0pu6egvqaaerpwc.ui.nabu.casa",
+        hassToken: localStorage.getItem("hassToken"),
+        entityIds: {
+            livingRoomLight: "light.192_168_11_103",
+            bedroomLight: "alarm_control_panel.ezviz_alarm",
+            temperatureSensor: "sensor.atc_0582_temperature",
+            humiditySensor: "sensor.atc_0582_humidity"
+        }
+    };
+    if (!CONFIG.hassToken) {
+        alert("Không tìm thấy token! Vui lòng quay lại trang chính để nhập token.");
+        window.location.href = "index.html";
+    }
+  // === KẾT THÚC CẤU HÌNH ===
+
+        // Biến toàn cục
+        let hassConnection = null;
+        let connectionRetryCount = 0;
+        let messageId = 1;
+        let stateCallbacks = {};
+        let entityStates = {};
+        let reconnectInterval = null;
+
+        // Các phần tử DOM
+        const elements = {
+            livingRoomLight: document.getElementById("livingRoomLight"),
+            livingRoomBrightness: document.getElementById("livingRoomBrightness"),
+            brightnessValue: document.getElementById("brightnessValue"),
+            bedroomLight: document.getElementById("bedroomLight"),
+            bedroomBrightness: document.getElementById("bedroomBrightness"),
+            bedroomBrightnessValue: document.getElementById("bedroomBrightnessValue"),
+            temperatureValue: document.getElementById("temperatureValue"),
+            tempLastUpdate: document.getElementById("tempLastUpdate"),
+            humidityValue: document.getElementById("humidityValue"),
+            humidityLastUpdate: document.getElementById("humidityLastUpdate"),
+            connectionStatus: document.getElementById("connectionStatus"),
+            connectionText: document.getElementById("connectionText"),
+            lastUpdated: document.getElementById("lastUpdated"),
+            connectionErrorMsg: document.getElementById("connectionErrorMsg"),
+            lightErrorMsg: document.getElementById("lightErrorMsg")
+        };
+
+        // Khởi tạo kết nối WebSocket với Home Assistant
+        function connectToHomeAssistant() {
+            try {
+                updateConnectionStatus(false, "Đang kết nối với Home Assistant...");
+                
+                const url = `${CONFIG.hassUrl.replace('http://', 'ws://').replace('https://', 'wss://')}/api/websocket`;
+                const socket = new WebSocket(url);
+                
+                socket.onopen = () => {
+                    console.log('WebSocket đã kết nối, đang xác thực...');
+                    connectionRetryCount = 0;
+                    clearInterval(reconnectInterval);
+                };
+                
+                socket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleMessage(data, socket);
+                };
+                
+                socket.onclose = (event) => {
+                    console.log('WebSocket bị ngắt kết nối', event);
+                    updateConnectionStatus(false, "Mất kết nối với Home Assistant");
+                    showError("connectionErrorMsg", "Mất kết nối với Home Assistant. Đang thử kết nối lại...");
+                    
+                    // Thử kết nối lại sau 5 giây
+                    if (!reconnectInterval) {
+                        reconnectInterval = setInterval(() => {
+                            connectionRetryCount++;
+                            if (connectionRetryCount < 10) {
+                                connectToHomeAssistant();
+                            } else {
+                                clearInterval(reconnectInterval);
+                                reconnectInterval = null;
+                                showError("connectionErrorMsg", "Không thể kết nối lại với Home Assistant sau nhiều lần thử. Vui lòng kiểm tra kết nối và làm mới trang.");
+                            }
+                        }, 5000);
+                    }
+                };
+                
+                socket.onerror = (error) => {
+                    console.error("Lỗi WebSocket:", error);
+                    showError("connectionErrorMsg", "Lỗi kết nối với Home Assistant. Vui lòng kiểm tra cấu hình và kết nối mạng.");
+                };
+                
+                hassConnection = socket;
+            } catch (error) {
+                console.error("Lỗi khi tạo kết nối:", error);
+                showError("connectionErrorMsg", "Lỗi khi tạo kết nối: " + error.message);
+                
+                // Thử kết nối lại sau 5 giây
+                setTimeout(connectToHomeAssistant, 5000);
+            }
+        }
+
+        // Xử lý tin nhắn từ Home Assistant
+        function handleMessage(message, socket) {
+            console.log('Nhận tin nhắn:', message);
+            
+            switch (message.type) {
+                case 'auth_required':
+                    // Gửi token xác thực
+                    socket.send(JSON.stringify({
+                        type: 'auth',
+                        access_token: CONFIG.hassToken
+                    }));
+                    break;
+                    
+                case 'auth_ok':
+                    // Xác thực thành công
+                    console.log('Xác thực thành công với Home Assistant');
+                    updateConnectionStatus(true, "Đã kết nối với Home Assistant");
+                    hideError("connectionErrorMsg");
+                    
+                    // Đăng ký lắng nghe sự kiện thay đổi trạng thái
+                    subscribeToEvents(socket);
+                    
+                    // Lấy trạng thái hiện tại của các thiết bị
+                    getStates(socket);
+                    break;
+                    
+                case 'auth_invalid':
+                    // Xác thực thất bại
+                    console.error('Xác thực thất bại:', message.message);
+                    showError("connectionErrorMsg", "Xác thực thất bại: Token không hợp lệ hoặc đã hết hạn.");
+                    updateConnectionStatus(false, "Lỗi xác thực");
+                    break;
+                    
+                case 'event':
+                    // Xử lý sự kiện
+                    if (message.event && message.event.event_type === 'state_changed') {
+                        handleStateChanged(message.event.data);
+                    }
+                    break;
+                    
+                case 'result':
+                    // Xử lý kết quả từ API call
+                    if (message.id && stateCallbacks[message.id]) {
+                        stateCallbacks[message.id](message.result);
+                        delete stateCallbacks[message.id];
+                    }
+                    break;
+                    
+                default:
+                    // Xử lý các loại tin nhắn khác nếu cần
+                    break;
+            }
+        }
+
+        // Đăng ký lắng nghe sự kiện thay đổi trạng thái
+        function subscribeToEvents(socket) {
+            const id = messageId++;
+            socket.send(JSON.stringify({
+                id: id,
+                type: 'subscribe_events',
+                event_type: 'state_changed'
+            }));
+        }
+
+        // Lấy trạng thái của tất cả các thiết bị
+        function getStates(socket) {
+            const id = messageId++;
+            stateCallbacks[id] = (states) => {
+                if (Array.isArray(states)) {
+                    // Lưu trạng thái của tất cả thiết bị
+                    states.forEach(state => {
+                        entityStates[state.entity_id] = state;
+                    });
+                    
+                    // Cập nhật UI cho các thiết bị quan tâm
+                    updateDeviceStates();
+                }
+            };
+            
+            socket.send(JSON.stringify({
+                id: id,
+                type: 'get_states'
+            }));
+        }
+
+        // Xử lý sự kiện thay đổi trạng thái
+        function handleStateChanged(data) {
+            const { entity_id, new_state } = data;
+            
+            // Lưu trạng thái mới của thiết bị
+            if (new_state) {
+                entityStates[entity_id] = new_state;
+                
+                // Cập nhật UI cho thiết bị cụ thể nếu đó là thiết bị chúng ta quan tâm
+                updateDeviceState(entity_id);
+                
+                // Cập nhật thời gian cập nhật cuối cùng
+                updateLastUpdated();
+            }
+        }
+
+        // Cập nhật UI cho tất cả các thiết bị quan tâm
+        function updateDeviceStates() {
+            const { entityIds } = CONFIG;
+            
+            // Cập nhật trạng thái đèn phòng khách
+            updateDeviceState(entityIds.livingRoomLight);
+            
+            // Cập nhật trạng thái đèn phòng ngủ
+            updateDeviceState(entityIds.bedroomLight);
+            
+            // Cập nhật giá trị nhiệt độ
+            updateDeviceState(entityIds.temperatureSensor);
+            
+            // Cập nhật giá trị độ ẩm
+            updateDeviceState(entityIds.humiditySensor);
+            
+            // Cập nhật thời gian cập nhật cuối cùng
+            updateLastUpdated();
+        }
+
+        // Cập nhật UI cho một thiết bị cụ thể
+        function updateDeviceState(entity_id) {
+            const state = entityStates[entity_id];
+            if (!state) return;
+            
+            const { entityIds } = CONFIG;
+            
+            switch (entity_id) {
+                case entityIds.livingRoomLight:
+                    // Cập nhật trạng thái đèn phòng khách
+                    const isLivingRoomOn = state.state === 'on';
+                    elements.livingRoomLight.checked = isLivingRoomOn;
+                    
+                    // Cập nhật độ sáng nếu có
+                    if (isLivingRoomOn && state.attributes && state.attributes.brightness) {
+                        const brightness = Math.round((state.attributes.brightness / 255) * 100);
+                        elements.livingRoomBrightness.value = brightness;
+                        elements.brightnessValue.textContent = brightness;
+                    }
+                    break;
+                    
+                case entityIds.bedroomLight:
+                    // Cập nhật trạng thái đèn phòng ngủ
+                    const isBedroomOn = state.state === 'on';
+                    elements.bedroomLight.checked = isBedroomOn;
+                    
+                    // Cập nhật độ sáng nếu có
+                    if (isBedroomOn && state.attributes && state.attributes.brightness) {
+                        const brightness = Math.round((state.attributes.brightness / 255) * 100);
+                        elements.bedroomBrightness.value = brightness;
+                        elements.bedroomBrightnessValue.textContent = brightness;
+                    }
+                    break;
+                    
+                case entityIds.temperatureSensor:
+                    // Cập nhật giá trị nhiệt độ
+                    elements.temperatureValue.textContent = `${state.state}°C`;
+                    elements.tempLastUpdate.textContent = formatTime(state.last_updated);
+                    break;
+                    
+                case entityIds.humiditySensor:
+                    // Cập nhật giá trị độ ẩm
+                    elements.humidityValue.textContent = `${state.state}%`;
+                    elements.humidityLastUpdate.textContent = formatTime(state.last_updated);
+                    break;
+                    
+                default:
+                    // Thiết bị không quan tâm
+                    break;
+            }
+        }
+
+        // Bật/tắt đèn
+        function toggleLight(entityId, state) {
+            if (!hassConnection || hassConnection.readyState !== WebSocket.OPEN) {
+                showError("lightErrorMsg", "Không thể điều khiển đèn: Mất kết nối với Home Assistant");
+                return;
+            }
+            
+            const service = state ? "turn_on" : "turn_off";
+            const id = messageId++;
+            
+            hassConnection.send(JSON.stringify({
+                id: id,
+                type: "call_service",
+                domain: "light",
+                service: service,
+                service_data: {
+                    entity_id: entityId
+                }
+            }));
+            
+            hideError("lightErrorMsg");
+        }
+
+        // Điều chỉnh độ sáng đèn
+        function setBrightness(entityId, brightness) {
+            if (!hassConnection || hassConnection.readyState !== WebSocket.OPEN) {
+                showError("lightErrorMsg", "Không thể điều chỉnh độ sáng: Mất kết nối với Home Assistant");
+                return;
+            }
+            
+            // Chuyển đổi phần trăm độ sáng (0-100) sang giá trị brightness của HA (0-255)
+            const brightnessValue = Math.round((brightness / 100) * 255);
+            const id = messageId++;
+            
+            hassConnection.send(JSON.stringify({
+                id: id,
+                type: "call_service",
+                domain: "light",
+                service: "turn_on",
+                service_data: {
+                    entity_id: entityId,
+                    brightness: brightnessValue
+                }
+            }));
+            
+            hideError("lightErrorMsg");
+        }
+
+        // Thiết lập các sự kiện cho các phần tử điều khiển
+        function setupEventListeners() {
+            const { entityIds } = CONFIG;
+            
+            // Bật/tắt đèn phòng khách
+            elements.livingRoomLight.addEventListener("change", function() {
+                toggleLight(entityIds.livingRoomLight, this.checked);
+            });
+            
+            // Điều chỉnh độ sáng đèn phòng khách
+            elements.livingRoomBrightness.addEventListener("change", function() {
+                setBrightness(entityIds.livingRoomLight, parseInt(this.value));
+            });
+            
+            // Cập nhật giá trị độ sáng khi kéo thanh trượt
+            elements.livingRoomBrightness.addEventListener("input", function() {
+                elements.brightnessValue.textContent = this.value;
+            });
+            
+            // Bật/tắt đèn phòng ngủ
+            elements.bedroomLight.addEventListener("change", function() {
+                toggleLight(entityIds.bedroomLight, this.checked);
+            });
+            
+            // Điều chỉnh độ sáng đèn phòng ngủ
+            elements.bedroomBrightness.addEventListener("change", function() {
+                setBrightness(entityIds.bedroomLight, parseInt(this.value));
+            });
+            
+            // Cập nhật giá trị độ sáng khi kéo thanh trượt
+            elements.bedroomBrightness.addEventListener("input", function() {
+                elements.bedroomBrightnessValue.textContent = this.value;
+            });
+        }
+
+        // Cập nhật trạng thái kết nối UI
+        function updateConnectionStatus(isConnected, message) {
+            if (isConnected) {
+                elements.connectionStatus.className = "indicator connected";
+                elements.connectionText.textContent = message || "Đã kết nối với Home Assistant";
+            } else {
+                elements.connectionStatus.className = "indicator disconnected";
+                elements.connectionText.textContent = message || "Mất kết nối với Home Assistant";
+            }
+        }
+
+        // Định dạng thời gian từ chuỗi ISO
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        // Cập nhật thời gian cập nhật cuối cùng
+        function updateLastUpdated() {
+            const now = new Date();
+            const formattedDate = now.toLocaleDateString('vi-VN');
+            const formattedTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            elements.lastUpdated.textContent = `Cập nhật lần cuối: ${formattedDate} ${formattedTime}`;
+        }
+
+        // Hiện thông báo lỗi
+        function showError(elementId, message) {
+            const errorElement = document.getElementById(elementId);
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.style.display = "block";
+            }
+        }
+
+        // Ẩn thông báo lỗi
+        function hideError(elementId) {
+            const errorElement = document.getElementById(elementId);
+            if (errorElement) {
+                errorElement.style.display = "none";
+            }
+        }
+
+        // Khởi chạy ứng dụng
+        window.addEventListener("DOMContentLoaded", () => {
+            setupEventListeners();
+            connectToHomeAssistant();
+        });
+</script>
+<!-- Phần còn lại của HTML và script: bạn dán toàn bộ phần còn lại từ index.html gốc vào đây -->
+</body>
+</html>
