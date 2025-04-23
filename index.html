@@ -1,82 +1,109 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Đăng nhập Home Assistant</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      background: #f5f5f5;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .login-box {
-      background: white;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-      max-width: 400px;
-      width: 100%;
-    }
-    input {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      font-size: 16px;
-    }
-    button {
-      margin-top: 15px;
-      padding: 10px;
-      width: 100%;
-      background: #03a9f4;
-      color: white;
-      border: none;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .error {
-      color: red;
-      margin-top: 10px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Assistant Dashboard</title>
+    <style>
+        :root {
+            --primary-color: #03a9f4;
+            --secondary-color: #ff9800;
+            --dark-color: #242424;
+            --light-color: #f8f8f8;
+            --success-color: #4caf50;
+            --warning-color: #ff5722;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        .token-form {
+            padding: 20px;
+            text-align: center;
+        }
+        .token-form input {
+            width: 80%;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .token-form button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .error-message {
+            color: var(--warning-color);
+            background-color: rgba(255, 87, 34, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
 </head>
 <body>
-  <div class="login-box">
-    <h2>Đăng nhập</h2>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Mật khẩu" />
-    <button onclick="login()">Đăng nhập</button>
-    <div class="error" id="error"></div>
-  </div>
+    <header>
+        <h1>Home Assistant Dashboard</h1>
+    </header>
 
-  <script>
-    async function login() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      const error = document.getElementById('error');
+    <div class="container">
+        <div id="tokenPrompt" class="token-form">
+            <h2>Nhập token Home Assistant của bạn</h2>
+            <input type="text" id="tokenInput" placeholder="Nhập long-lived access token...">
+            <br>
+            <button onclick="saveToken()">Lưu và Kết nối</button>
+            <div class="error-message hidden" id="tokenError">Vui lòng nhập token hợp lệ.</div>
+        </div>
 
-      try {
-        const res = await fetch('https://web1-fafi.onrender.com/api/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ email, password })
-        });
+        <iframe id="dashboardFrame" src="" width="100%" height="800" class="hidden" style="border: none;"></iframe>
+    </div>
 
-        if (res.ok) {
-          window.location.href = "dashboard.html";
-        } else {
-          const data = await res.json();
-          error.textContent = data.message || 'Lỗi đăng nhập';
+    <script>
+        function saveToken() {
+            const token = document.getElementById("tokenInput").value.trim();
+            if (token.length < 20) {
+                document.getElementById("tokenError").classList.remove("hidden");
+                return;
+            }
+            localStorage.setItem("hassToken", token);
+            loadDashboard();
         }
-      } catch (err) {
-        error.textContent = 'Không thể kết nối tới máy chủ';
-      }
-    }
-  </script>
+
+        function loadDashboard() {
+            const token = localStorage.getItem("hassToken");
+            if (!token) return;
+            document.getElementById("tokenPrompt").classList.add("hidden");
+            document.getElementById("dashboardFrame").src = "dashboard.html";
+            document.getElementById("dashboardFrame").classList.remove("hidden");
+        }
+
+        window.onload = function () {
+            loadDashboard();
+        };
+    </script>
 </body>
 </html>
