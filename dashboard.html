@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Assistant Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         :root {
             --primary-color: #03a9f4;
@@ -22,11 +25,7 @@
             color: #333;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
+       
 
         header {
             background-color: var(--primary-color);
@@ -41,18 +40,18 @@
         }
 
         .dashboard {
-            margin-top: 20px;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
         }
 
         .card {
             background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            transition: transform 0.2s, box-shadow 0.2s;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            font-size: 18px;
+            min-height: 400px;
         }
 
         .card:hover {
@@ -169,7 +168,7 @@
             justify-content: space-between;
             align-items: center;
             margin-top: 30px;
-            padding: 10px 20px;
+            padding: 10px 500px;
             background-color: var(--light-color);
             border-radius: 5px;
             font-size: 14px;
@@ -195,99 +194,387 @@
             background-color: var(--warning-color);
         }
 
-        .error-message {
-            color: var(--warning-color);
-            background-color: rgba(255, 87, 34, 0.1);
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
-            display: none;
-        }
+        
 
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-columns: 1fr;
             }
         }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 220px;
+            background-color: var(--dark-color);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            padding-top: 20px;
+            transition: width 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar.collapsed {
+            width: 60px;
+        }
+        .sidebar h2 {
+            margin: 0 60px 20px;
+            font-size: 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: opacity 0.3s ease;
+        }
+        .sidebar.collapsed h2 {
+            opacity: 0;
+        }
+
+        .sidebar ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .sidebar ul li {
+            margin: 15px 0;
+        }
+
+        .sidebar ul li a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .sidebar ul li a:hover {
+            color: var(--primary-color);
+        }
+
+        /* Điều chỉnh layout phần chính để tránh bị sidebar đè lên */
+        .container {
+            padding: 20px 20px 20px 240px; /* default: sidebar rộng 220px + khoảng cách */
+            transition: padding-left 0.3s ease;
+        }
+
+        .container.shifted {
+            padding-left: 100px; /* sidebar thu gọn còn 60px + khoảng cách an toàn */
+        }
+
+
+        
+    
+        /* Ẩn hiện nội dung tab */
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+
+        .sidebar ul.nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar ul.nav li {
+            transition: background 0.3s;
+        }
+
+        .sidebar ul.nav li a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s;
+            border-left: 4px solid transparent;
+            white-space: nowrap;
+        }
+
+        .sidebar ul.nav li a span {
+            transition: opacity 0.3s ease;
+        }
+        .sidebar.collapsed ul.nav li a span {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sidebar ul.nav li a.active {
+            background-color: var(--primary-color);
+            border-left: 4px solid var(--secondary-color);
+            font-weight: bold;
+        }
+        .sidebar ul.nav li a i {
+            margin-right: 12px;
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+        .menu-toggle {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1101;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        .page-title {
+            margin: 0;
+            font-size: 24px;
+            transition: margin-left 0.3s ease;
+        }
+
+        /* Khi sidebar thu gọn, làm tiêu đề lùi về bên trái */
+        .container.shifted .page-title {
+            margin-left: -3px; /* hoặc ẩn dần bằng opacity */
+            
+        }
+        .page-header {
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        body.dark-mode {
+            background-color: #121212;
+            color: #f0f0f0;
+        }
+
+        .dark-mode .card {
+            background-color: #1e1e1e;
+            border-color: #333;
+            box-shadow: none;
+        }
+
+        .dark-mode canvas {
+        background-color: #1e1e1e;
+        }
+
+        .dark-mode h2,
+        .dark-mode .sensor-value {
+        color: #00bcd4;
+        }
+        /* 🔄 Switch toggle */
+        .dark-mode .toggle-switch {
+        background-color: #444 !important;
+        }
+
+        .dark-mode .toggle-switch input:checked + .slider {
+        background-color: #00c853;
+        }
+
+        .dark-mode .slider:before {
+        background-color: #eee;
+        }
+
+        /* 🔄 Slider */
+        .dark-mode input[type="range"] {
+        background-color: #333;
+        }
+
+        .dark-mode input[type="range"]::-webkit-slider-thumb {
+            background-color: #2196f3;
+            border: 2px solid #fff;
+        }
+
+        /* 🔄 Card hoặc khung chứa slider/switch */
+        .dark-mode .card,
+        .dark-mode .control-panel {
+            background-color: #1e1e1e;
+            border-color: #333;
+        }
+
+        /* 🔄 Status bar */
+        .dark-mode .status-bar {
+            background-color: #1a1a1a;
+            color: #ccc;
+        }
+
+        /* 🔄 Chữ bị quá nhạt */
+        .dark-mode .label,
+        .dark-mode .sensor-label,
+        .dark-mode .status-text {
+        color: #ddd;
+        }
+        .dark-mode .light-item {
+            background-color: #2c2c2c;
+            border: 1px solid #444;
+        }
+
+        .dark-mode .light-name {
+        color: #eee;
+        }
+        .dark-mode .light-item {
+            border-radius: 10px;
+            box-shadow: 0 0 3px rgba(255, 255, 255, 0.05);
+        }
+        .theme-toggle {
+            background-color: transparent;
+            border: 1px solid #888;
+            color: inherit;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease-in-out;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 999;
+        }
+
+        .theme-toggle:hover {
+        background-color: rgba(128, 128, 128, 0.1);
+        }
+
+
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            
+        }
+
+
     </style>
 </head>
 <body>
-<!-- Phần giao diện và script JavaScript giữ nguyên như trong file gốc -->
-<!-- Chỉ thay dòng hassToken như sau: -->
-   <header>
-        <h1>Home Assistant Dashboard</h1>
-    </header>
+    <button class="menu-toggle" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+    <button id="darkModeToggle" class="theme-toggle">
+        <span id="themeIcon">🌙</span>
+        <span id="themeLabel">Dark Mode</span>
+    </button>
+      
+      
+    <div class="sidebar" id="sidebar">
+        <h2>SmartHome</h2>
+        <ul class="nav">
+            <li><a href="#" class="active" onclick="switchTab('overview', this)"><i class="fas fa-home"></i> <span>Tổng quan</span></a></li>
+            <li><a href="#" onclick="switchTab('energy', this)"><i class="fas fa-bolt"></i> <span>Năng lượng</span></a></li>
+            <li><a href="#" onclick="switchTab('history', this)"><i class="fas fa-clock-rotate-left"></i> <span>Lịch sử</span></a></li>
+            <li><a href="index.html" onclick="localStorage.removeItem('hassToken')"><i class="fas fa-sign-out-alt"></i> <span>Đăng xuất</span></a></li>
+        </ul>
+        
+    </div>
 
-    <div class="container">
-        <div class="dashboard">
-            <!-- Yeelight Control Card -->
-            <div class="card">
-                <h2>Điều Khiển Đèn</h2>
-                <div class="light-controls">
-                    <div class="light-item">
-                        <span class="light-name">Đèn Phòng Khách</span>
-                        <label class="switch">
-                            <input type="checkbox" id="livingRoomLight">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="brightness-control">
-                        <p>Độ sáng: <span id="brightnessValue">70</span>%</p>
-                        <input type="range" min="1" max="100" value="70" class="brightness-slider" id="livingRoomBrightness">
-                    </div>
-
-                    <div class="light-item">
-                        <span class="light-name">Đèn Phòng Ngủ</span>
-                        <label class="switch">
-                            <input type="checkbox" id="bedroomLight">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="brightness-control">
-                        <p>Độ sáng: <span id="bedroomBrightnessValue">50</span>%</p>
-                        <input type="range" min="1" max="100" value="50" class="brightness-slider" id="bedroomBrightness">
-                    </div>
-                </div>
-                <div class="error-message" id="lightErrorMsg"></div>
+    <div class="tab-content active" id="overviewTab">
+        <div class="container" id="mainContainer">
+            <div class="page-header">
+                <h1 id="pageTitle" class="page-title">Tổng quan</h1>
             </div>
+              
+            <div class="dashboard">
+                <!-- Yeelight Control Card -->
+                <div class="card">
+                    <h2>Điều Khiển Đèn</h2>
+                    <div class="light-controls">
+                        <div class="light-item">
+                            <span class="light-name">Đèn Phòng Khách</span>
+                            <label class="switch">
+                                <input type="checkbox" id="livingRoomLight">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="brightness-control">
+                            <p>Độ sáng: <span id="brightnessValue">70</span>%</p>
+                            <input type="range" min="1" max="100" value="70" class="brightness-slider" id="livingRoomBrightness">
+                        </div>
 
-            <!-- Temperature Card -->
-            <div class="card">
-                <h2>Nhiệt Độ</h2>
-                <div class="sensor-data">
-                    <div class="sensor-value" id="temperatureValue">--°C</div>
-                    <div class="sensor-label">Cập nhật lần cuối: <span id="tempLastUpdate">--:--:--</span></div>
+                        <div class="light-item">
+                            <span class="light-name">Đèn Phòng Ngủ</span>
+                            <label class="switch">
+                                <input type="checkbox" id="bedroomLight">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="brightness-control">
+                            <p>Độ sáng: <span id="bedroomBrightnessValue">50</span>%</p>
+                            <input type="range" min="1" max="100" value="50" class="brightness-slider" id="bedroomBrightness">
+                        </div>
+                    </div>
+                    
+                </div>
+
+                <!-- Temperature Card -->
+                <div class="card">
+                    <h2>Nhiệt Độ</h2>
+                    <div class="sensor-data">
+                        <div class="sensor-value" id="temperatureValue">--°C</div>
+                        
+                    </div>
+                    <canvas id="temperatureChart" height="200"></canvas>
+                </div>
+
+                <!-- Humidity Card -->
+                <div class="card">
+                    <h2>Độ Ẩm</h2>
+                    <div class="sensor-data">
+                        <div class="sensor-value" id="humidityValue">--%</div>
+                        
+                    </div>
+                    <canvas id="humidityChart" height="200"></canvas>
                 </div>
             </div>
-
-            <!-- Humidity Card -->
-            <div class="card">
-                <h2>Độ Ẩm</h2>
-                <div class="sensor-data">
-                    <div class="sensor-value" id="humidityValue">--%</div>
-                    <div class="sensor-label">Cập nhật lần cuối: <span id="humidityLastUpdate">--:--:--</span></div>
-                </div>
-            </div>
+    </div>
+    <!-- Các tab khác -->
+    <div class="tab-content" id="energyTab">
+        <div class="container">
+            <h1>Năng lượng</h1>
+            <p>Thông tin năng lượng sẽ được hiển thị ở đây.</p>
         </div>
+    </div>
+    <div class="tab-content" id="historyTab">
+        <div class="container">
+            <h1>Lịch sử</h1>
+            <p>Lịch sử hoạt động sẽ được hiển thị ở đây.</p>
+        </div>
+    </div>
 
-        <div class="status-bar">
-            <div class="status-indicator">
-                <div class="indicator disconnected" id="connectionStatus"></div>
-                <span id="connectionText">Đang kết nối với Home Assistant...</span>
+    <div class="status-bar">
+         <div class="status-indicator">
+            <div class="indicator disconnected" id="connectionStatus"></div>
+                <span id="connectionText">Đang kết nối với Máy chủ...</span>
             </div>
             <div>
                 <span id="lastUpdated">Chưa có dữ liệu</span>
             </div>
         </div>
-        <div class="error-message" id="connectionErrorMsg"></div>
+        
     </div>
+
 <script>
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const container = document.getElementById('mainContainer');
+        const isCollapsed = sidebar.classList.toggle('collapsed');
+        container.classList.toggle('shifted', isCollapsed);
+    }
+
+
     const CONFIG = {
         hassUrl: "https://ebqvnmfukgx05lv0x0pu6egvqaaerpwc.ui.nabu.casa",
         hassToken: localStorage.getItem("hassToken"),
         entityIds: {
-            livingRoomLight: "light.192_168_11_104",
-            bedroomLight: "alarm_control_panel.ezviz_alarm",
+            livingRoomLight: "light.192_168_11_102",
+            bedroomLight: "conversation.home_assistant",
             temperatureSensor: "sensor.atc_0582_temperature",
             humiditySensor: "sensor.atc_0582_humidity"
         }
@@ -328,7 +615,7 @@
         // Khởi tạo kết nối WebSocket với Home Assistant
         function connectToHomeAssistant() {
             try {
-                updateConnectionStatus(false, "Đang kết nối với Home Assistant...");
+                updateConnectionStatus(false, "Đang kết nối với Máy chủ...");
                 
                 const url = `${CONFIG.hassUrl.replace('http://', 'ws://').replace('https://', 'wss://')}/api/websocket`;
                 const socket = new WebSocket(url);
@@ -346,8 +633,8 @@
                 
                 socket.onclose = (event) => {
                     console.log('WebSocket bị ngắt kết nối', event);
-                    updateConnectionStatus(false, "Mất kết nối với Home Assistant");
-                    showError("connectionErrorMsg", "Mất kết nối với Home Assistant. Đang thử kết nối lại...");
+                    updateConnectionStatus(false, "Mất kết nối với Máy chủ");
+                    updateConnectionStatus(false, "Mất kết nối với Máy chủ. Đang thử kết nối lại...");
                     
                     // Thử kết nối lại sau 5 giây
                     if (!reconnectInterval) {
@@ -358,7 +645,8 @@
                             } else {
                                 clearInterval(reconnectInterval);
                                 reconnectInterval = null;
-                                showError("connectionErrorMsg", "Không thể kết nối lại với Home Assistant sau nhiều lần thử. Vui lòng kiểm tra kết nối và làm mới trang.");
+                                updateConnectionStatus(false, "Không thể kết nối lại với Máy chủ sau nhiều lần thử. Vui lòng kiểm tra kết nối và làm mới trang.");
+
                             }
                         }, 5000);
                     }
@@ -366,7 +654,7 @@
                 
                 socket.onerror = (error) => {
                     console.error("Lỗi WebSocket:", error);
-                    showError("connectionErrorMsg", "Lỗi kết nối với Home Assistant. Vui lòng kiểm tra cấu hình và kết nối mạng.");
+                    updateConnectionStatus(false, "Lỗi kết nối với Home Assistant. Vui lòng kiểm tra kết nối mạng.");
                 };
                 
                 hassConnection = socket;
@@ -395,7 +683,7 @@
                 case 'auth_ok':
                     // Xác thực thành công
                     console.log('Xác thực thành công với Home Assistant');
-                    updateConnectionStatus(true, "Đã kết nối với Home Assistant");
+                    updateConnectionStatus(true, "Đã kết nối với Máy chủ");
                     hideError("connectionErrorMsg");
                     
                     // Đăng ký lắng nghe sự kiện thay đổi trạng thái
@@ -408,7 +696,7 @@
                 case 'auth_invalid':
                     // Xác thực thất bại
                     console.error('Xác thực thất bại:', message.message);
-                    showError("connectionErrorMsg", "Xác thực thất bại: Token không hợp lệ hoặc đã hết hạn.");
+                    updateConnectionStatus(false, "Xác thực thất bại: Token không hợp lệ hoặc đã hết hạn.");
                     updateConnectionStatus(false, "Lỗi xác thực");
                     break;
                     
@@ -534,17 +822,21 @@
                     }
                     break;
                     
-                case entityIds.temperatureSensor:
-                    // Cập nhật giá trị nhiệt độ
-                    elements.temperatureValue.textContent = `${state.state}°C`;
-                    elements.tempLastUpdate.textContent = formatTime(state.last_updated);
-                    break;
+                    case entityIds.temperatureSensor:
+                        elements.temperatureValue.textContent = `${state.state}°C`;
+                        if (elements.tempLastUpdate) {  // kiểm tra tồn tại
+                            elements.tempLastUpdate.textContent = formatTime(state.last_updated);
+                        }
+                        break;
+
                     
-                case entityIds.humiditySensor:
-                    // Cập nhật giá trị độ ẩm
-                    elements.humidityValue.textContent = `${state.state}%`;
-                    elements.humidityLastUpdate.textContent = formatTime(state.last_updated);
-                    break;
+                        case entityIds.humiditySensor:
+                            elements.humidityValue.textContent = `${state.state}%`;
+                            if (elements.humidityLastUpdate) {
+                                elements.humidityLastUpdate.textContent = formatTime(state.last_updated);
+                            }
+                            break;
+
                     
                 default:
                     // Thiết bị không quan tâm
@@ -555,7 +847,7 @@
         // Bật/tắt đèn
         function toggleLight(entityId, state) {
             if (!hassConnection || hassConnection.readyState !== WebSocket.OPEN) {
-                showError("lightErrorMsg", "Không thể điều khiển đèn: Mất kết nối với Home Assistant");
+                showError("lightErrorMsg", "Không thể điều khiển đèn: Mất kết nối với Máy chủ");
                 return;
             }
             
@@ -578,7 +870,7 @@
         // Điều chỉnh độ sáng đèn
         function setBrightness(entityId, brightness) {
             if (!hassConnection || hassConnection.readyState !== WebSocket.OPEN) {
-                showError("lightErrorMsg", "Không thể điều chỉnh độ sáng: Mất kết nối với Home Assistant");
+                showError("lightErrorMsg", "Không thể điều chỉnh độ sáng: Mất kết nối với Máy chủ");
                 return;
             }
             
@@ -639,10 +931,10 @@
         function updateConnectionStatus(isConnected, message) {
             if (isConnected) {
                 elements.connectionStatus.className = "indicator connected";
-                elements.connectionText.textContent = message || "Đã kết nối với Home Assistant";
+                elements.connectionText.textContent = message || "Đã kết nối với Máy chủ";
             } else {
                 elements.connectionStatus.className = "indicator disconnected";
-                elements.connectionText.textContent = message || "Mất kết nối với Home Assistant";
+                elements.connectionText.textContent = message || "Mất kết nối với Máy chủ";
             }
         }
 
@@ -682,7 +974,180 @@
             setupEventListeners();
             connectToHomeAssistant();
         });
+        function switchTab(tabName, element) {
+            // Ẩn/hiện nội dung các tab
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+
+            // Cập nhật trạng thái sidebar
+            document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
+            if (element) element.classList.add('active');
+
+            // Cập nhật tiêu đề
+            const pageTitle = document.getElementById('pageTitle');
+            const tabTitles = {
+                overview: "Tổng quan",
+                energy: "Năng lượng",
+                history: "Lịch sử"
+            };
+            if (pageTitle) pageTitle.textContent = tabTitles[tabName] || "Dashboard";
+        }
+
+        const tempCtx = document.getElementById('temperatureChart').getContext('2d');
+            const tempGradient = tempCtx.createLinearGradient(0, 0, 0, 200);
+            tempGradient.addColorStop(0, 'rgba(255, 99, 132, 0.4)');
+            tempGradient.addColorStop(1, 'rgba(255, 99, 132, 0)');
+
+            const temperatureChart = new Chart(tempCtx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                label: 'Nhiệt độ (°C)',
+                data: [],
+                borderColor: 'rgba(255, 99, 132, 1)',
+                backgroundColor: tempGradient,  // gradient fill
+                borderWidth: 2,
+                fill: true,                     // 💡 bật fill
+                tension: 0.3,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: 'rgba(255, 99, 132, 1)',
+                pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                animation: false,
+                scales: {
+                    x: {
+                        type: 'time',  // 🔥 bắt buộc để dùng thời gian
+                        time: {
+                            unit: 'minute',
+                            tooltipFormat: 'HH:mm:ss dd-MM-yyyy',
+                            displayFormats: {
+                            minute: 'HH:mm'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Thời gian'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxRotation: 0,
+                            minRotation: 0,
+                            major: { enabled: true }
+                        }
+                    },
+
+                    y: {
+                    beginAtZero: true,
+                    title: { display: true, text: '°C' }
+                    }
+                }
+            }
+        });
+
+
+        const humidCtx = document.getElementById('humidityChart').getContext('2d');
+        const humidGradient = humidCtx.createLinearGradient(0, 0, 0, 200);
+        humidGradient.addColorStop(0, 'rgba(54, 162, 235, 0.4)');
+        humidGradient.addColorStop(1, 'rgba(54, 162, 235, 0)');
+
+        const humidityChart = new Chart(humidCtx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Độ ẩm (%)',
+                        data: [],
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: humidGradient,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: 'rgba(54, 162, 235, 1)',
+                        pointRadius: 4
+                    }]
+                },
+            options: {
+                responsive: true,
+                animation: false,
+                scales: {
+                    x: {
+                        type: 'time',  // 🔥 bắt buộc để dùng thời gian
+                        time: {
+                            unit: 'minute',
+                            tooltipFormat: 'HH:mm:ss dd-MM-yyyy',
+                            displayFormats: {
+                            minute: 'HH:mm'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Thời gian'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxRotation: 0,
+                            minRotation: 0,
+                            major: { enabled: true }
+                        }
+                    } ,  
+
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: '%' }
+                    }
+                }
+            }
+        });
+
+
+        function updateChartsFromState(entity_id, value) {
+            const now = Date.now();  // timestamp cho trục thời gian
+
+            const chart = entity_id.includes('temperature') ? temperatureChart : humidityChart;
+            const parsedValue = parseFloat(value);
+
+            if (chart.data.datasets[0].data.length >= 8) {
+                chart.data.datasets[0].data.shift();  // giữ 8 điểm
+            }
+
+            chart.data.datasets[0].data.push({ x: now, y: parsedValue });
+            chart.update();
+        }
+
+        // Gọi trong updateDeviceState để cập nhật biểu đồ
+        const originalUpdateDeviceState = updateDeviceState;
+        updateDeviceState = function(entity_id) {
+            originalUpdateDeviceState(entity_id);
+            const state = entityStates[entity_id];
+            if (!state) return;
+
+            if (entity_id === CONFIG.entityIds.temperatureSensor || entity_id === CONFIG.entityIds.humiditySensor) {
+                updateChartsFromState(entity_id, state.state);
+            }
+        };
+        
+        
+        const toggle = document.getElementById('darkModeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const themeLabel = document.getElementById('themeLabel');
+
+        function setThemeMode(isDark) {
+            document.body.classList.toggle('dark-mode', isDark);
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            themeIcon.textContent = isDark ? '☀️' : '🌙';
+            themeLabel.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+        }
+
+        // Khi trang tải, kiểm tra localStorage
+        setThemeMode(localStorage.getItem('theme') === 'dark');
+
+        toggle.addEventListener('click', () => {
+            const isDark = !document.body.classList.contains('dark-mode');
+            setThemeMode(isDark);
+        });
 </script>
-<!-- Phần còn lại của HTML và script: bạn dán toàn bộ phần còn lại từ index.html gốc vào đây -->
 </body>
 </html>
