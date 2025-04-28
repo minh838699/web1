@@ -638,7 +638,26 @@
     <div class="tab-content" id="energyTab">
         <div class="container">
             <h1>Năng lượng</h1>
-            <p>Thông tin năng lượng sẽ được hiển thị ở đây.</p>
+            <div class="card">
+                <h2>Thông tin Năng lượng</h2>
+                <div class="energy-info">
+                  <div>Chỉ số đầu kỳ: <span id="startIndex">--</span></div>
+                  <div>Chỉ số tạm chốt: <span id="currentIndex">--</span></div>
+                  <div>Hóa đơn cũ: <span id="oldBill">--</span></div>
+                  <div>Lần cập nhật cuối: <span id="lastUpdate">--</span></div>
+                  <div>Lịch cắt điện: <span id="cutSchedule">--</span></div>
+                  <div>Ngày đầu kỳ: <span id="startDay">--</span></div>
+                  <div>Ngày tạm chốt: <span id="endDay">--</span></div>
+                  <div>Sản lượng ngày hôm qua: <span id="dailyUsage1">--</span></div>
+                  <div>Sản lượng hôm nay: <span id="dailyUsage2">--</span></div>
+                  <div>Sản lượng tháng này: <span id="monthlyUsage">--</span></div>
+                  <div>Tiền điện hôm qua: <span id="dailyCost1">--</span></div>
+                  <div>Tiền điện hôm nay: <span id="dailyCost2">--</span></div>
+                  <div>Tiền điện tháng này: <span id="monthlyCost">--</span></div>
+                  <div>Tiền nợ: <span id="debt">--</span></div>
+                </div>
+            </div>
+              
         </div>
     </div>
     <div class="tab-content" id="historyTab">
@@ -725,9 +744,26 @@
             livingRoomLight: "light.192_168_11_102",
             bedroomLight: "conversation.home_assistant",
             temperatureSensor: "sensor.atc_0582_temperature",
-            humiditySensor: "sensor.atc_0582_humidity"
+            humiditySensor: "sensor.atc_0582_humidity",
+
+            // Energy IDs
+            energyStart: "sensor.pc05ff0642599_econ_total_old",
+            energyCurrent: "sensor.pc05ff0642599_econ_total_new",
+            oldBill: "sensor.pc05ff0642599_payment_needed",
+            lastUpdate: "sensor.pc05ff0642599_latest_update",
+            cutSchedule: "sensor.pc05ff0642599_loadshedding",
+            startDay: "sensor.pc05ff0642599_from_date",
+            endDay: "sensor.pc05ff0642599_to_date",
+            dailyUsage1: "sensor.pc05ff0642599_econ_daily_old",
+            dailyUsage2: "sensor.pc05ff0642599_econ_daily_new",
+            monthlyUsage: "sensor.pc05ff0642599_econ_monthly_new",
+            dailyCost1: "sensor.pc05ff0642599_ecost_daily_old",
+            dailyCost2: "sensor.pc05ff0642599_ecost_daily_new",
+            monthlyCost: "sensor.pc05ff0642599_ecost_monthly_new",
+            debt: "sensor.pc05ff0642599_m_payment_needed"
         }
     };
+
     if (!CONFIG.hassToken) {
         alert("Không tìm thấy token! Vui lòng quay lại trang chính để nhập token.");
         window.location.href = "index.html";
@@ -892,6 +928,7 @@
                     
                     // Cập nhật UI cho các thiết bị quan tâm
                     updateDeviceStates();
+                    updateFullEnergyInfo();
                 }
             };
             
@@ -914,6 +951,7 @@
                 
                 // Cập nhật thời gian cập nhật cuối cùng
                 updateLastUpdated();
+                updateFullEnergyInfo();
             }
         }
 
@@ -935,6 +973,7 @@
             
             // Cập nhật thời gian cập nhật cuối cùng
             updateLastUpdated();
+            updateFullEnergyInfo();
         }
 
         // Cập nhật UI cho một thiết bị cụ thể
@@ -1140,7 +1179,13 @@
                 history: "Lịch sử"
             };
             if (pageTitle) pageTitle.textContent = tabTitles[tabName] || "Dashboard";
+
+            // 💥 Nếu chuyển sang tab năng lượng => cập nhật lại dữ liệu năng lượng
+            if (tabName === 'energy') {
+                updateFullEnergyInfo();
+            }
         }
+
 
         const tempCtx = document.getElementById('temperatureChart').getContext('2d');
             const tempGradient = tempCtx.createLinearGradient(0, 0, 0, 200);
@@ -1419,6 +1464,25 @@
                 document.getElementById('cancelTimerButton').style.display = 'none';
                 });
 
+
+                function updateFullEnergyInfo() {
+                    const { entityIds } = CONFIG;
+
+                    document.getElementById('startIndex').textContent = entityStates[entityIds.energyStart]?.state + " kWh" || "--";
+                    document.getElementById('currentIndex').textContent = entityStates[entityIds.energyCurrent]?.state + " kWh" || "--";
+                    document.getElementById('oldBill').textContent = entityStates[entityIds.oldBill]?.state || "--";
+                    document.getElementById('lastUpdate').textContent = entityStates[entityIds.lastUpdate]?.state || "--";
+                    document.getElementById('cutSchedule').textContent = entityStates[entityIds.cutSchedule]?.state || "--";
+                    document.getElementById('startDay').textContent = entityStates[entityIds.startDay]?.state || "--";
+                    document.getElementById('endDay').textContent = entityStates[entityIds.endDay]?.state || "--";
+                    document.getElementById('dailyUsage1').textContent = entityStates[entityIds.dailyUsage1]?.state + " kWh" || "--";
+                    document.getElementById('dailyUsage2').textContent = entityStates[entityIds.dailyUsage2]?.state + " kWh" || "--";
+                    document.getElementById('monthlyUsage').textContent = entityStates[entityIds.monthlyUsage]?.state + " kWh" || "--";
+                    document.getElementById('dailyCost1').textContent = entityStates[entityIds.dailyCost1]?.state + " VNĐ" || "--";
+                    document.getElementById('dailyCost2').textContent = entityStates[entityIds.dailyCost2]?.state + " VNĐ" || "--";
+                    document.getElementById('monthlyCost').textContent = entityStates[entityIds.monthlyCost]?.state + " VNĐ" || "--";
+                    document.getElementById('debt').textContent = entityStates[entityIds.debt]?.state + " VNĐ" || "--";
+                }
 
 </script>
     
