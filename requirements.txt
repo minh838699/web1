@@ -1,6 +1,0 @@
-flask==3.0.3
-flask-cors==4.0.0
-opencv-python==4.9.0.80
-mtcnn==0.1.1
-keras-facenet==0.3.2
-numpy==1.26.4
